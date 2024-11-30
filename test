@@ -1,0 +1,46 @@
+import _ from "lodash";
+
+const x = [
+  {
+    id: 1,
+    bucketCode: "X",
+    priority: 2,
+    rates: [
+      { id: 1, value: 1, market: "US" },
+      { id: 2, value: 2, market: "IT" },
+      { id: 3, value: 3, market: "FR" },
+    ],
+  },
+  {
+    id: 1,
+    bucketCode: "Y",
+    priority: 1,
+    rates: [
+      { id: 4, value: 4, market: "US" },
+      { id: 5, value: 5, market: "IT" },
+      { id: 6, value: 6, market: "FR" },
+    ],
+  },
+];
+
+// Konwersja z sortowaniem według priority
+const result = _(x)
+  // Posortuj elementy według priority
+  .sortBy("priority")
+  // Spłaszcz dane dla każdego market
+  .flatMap((item) =>
+    item.rates.map((rate) => ({
+      market: rate.market,
+      [item.bucketCode]: rate.value,
+    }))
+  )
+  // Grupuj wyniki według market
+  .groupBy("market")
+  // Złącz obiekty w grupie w posortowanej kolejności
+  .map((group, market) => ({
+    market,
+    ..._.merge({}, ...group),
+  }))
+  .value();
+
+console.log(result);
