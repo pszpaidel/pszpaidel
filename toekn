@@ -1,0 +1,51 @@
+import {
+  ConfidentialClientApplication,
+  Configuration,
+  SilentFlowRequest,
+  AuthenticationResult,
+} from "@azure/msal-node";
+
+export class AuthService {
+  private msalClient: ConfidentialClientApplication;
+  private cachedAccessToken: string | null = null;
+  private cachedRefreshToken: string | null = null;
+
+  constructor(config: Configuration) {
+    this.msalClient = new ConfidentialClientApplication(config);
+  }
+
+  /**
+   * Automatyczne uzyskanie lub odświeżenie tokenu.
+   */
+  async getToken(scope: string): Promise<string> {
+    if (this.cachedAccessToken) {
+      return this.cachedAccessToken;
+    }
+
+    const request: SilentFlowRequest = {
+      scopes: [scope],
+      account: null, // Kontekst użytkownika nie jest wymagany na serwerze
+    };
+
+    const response: AuthenticationResult = await this.msalClient.acquireTokenSilent(request).catch(async (err) => {
+      if (this.cachedRefreshToken) {
+        // Użyj refreshToken do odświeżenia tokenu
+        return await this.msalClient.acquireTokenByRefreshToken({
+          refreshToken: this.cachedRefreshToken,
+          scopes: [scope],
+        });
+      }
+      throw new Error("Failed to acquire token silently or via refresh token");
+    });
+
+    if (!response || !response.accessToken) {
+      throw new Error("Failed to acquire token");
+    }
+
+    // Zaktualizuj cache tokenów
+    this.cachedAccessToken = response.accessToken;
+    this.cachedRefreshToken = response.refreshToken || this.cachedRefreshToken;
+
+    return this.cachedAccessToken;
+  }
+}
