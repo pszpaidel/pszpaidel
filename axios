@@ -1,0 +1,85 @@
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+
+export class DALService {
+  private axiosInstance: AxiosInstance;
+  private token: string | null = null;
+  private tokenExpiry: number | null = null; // Czas wygaśnięcia tokena (timestamp)
+
+  constructor(config: AxiosRequestConfig) {
+    this.axiosInstance = axios.create(config);
+    this.setupInterceptors();  // Ustawienie interceptorów w konstruktorze
+  }
+
+  /**
+   * Pobiera token i datę ważności z API
+   */
+  private async getAuthToken(): Promise<string> {
+    // Sprawdzamy, czy token jest jeszcze ważny
+    if (this.token && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+      return this.token; // Zwracamy zapamiętany token, jeśli jest ważny
+    }
+
+    // Jeśli token jest nieważny lub nie istnieje, pobieramy nowy
+    try {
+      const response = await axios.get('https://api.example.com/get-token');
+      this.token = response.data.token;
+      this.tokenExpiry = Date.parse(response.data.expiryDate); // Data wygaśnięcia
+      return this.token;
+    } catch (error) {
+      throw new Error('Unable to fetch token');
+    }
+  }
+
+  /**
+   * Ustawienie interceptorów dla axiosa
+   */
+  private setupInterceptors(): void {
+    this.axiosInstance.interceptors.request.use(
+      async (config) => {
+        const token = await this.getAuthToken(); // Pobieramy token
+        if (token) {
+          config.headers = {
+            ...config.headers,
+            Authorization: `Bearer ${token}`, // Dodajemy token do nagłówka
+          };
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    this.axiosInstance.interceptors.response.use(
+      (response) => {
+        // Opcjonalnie: obsługa odpowiedzi (np. logowanie, modyfikowanie danych)
+        return response;
+      },
+      (error) => {
+        // Opcjonalnie: obsługa błędów
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  /**
+   * Metoda GET
+   */
+  async get<T>(endpoint: string, params?: Record<string, any>): Promise<AxiosResponse<T>> {
+    return this.axiosInstance.get<T>(endpoint, { params });
+  }
+
+  /**
+   * Metoda POST
+   */
+  async post<T>(endpoint: string, data: any): Promise<AxiosResponse<T>> {
+    return this.axiosInstance.post<T>(endpoint, data);
+  }
+
+  /**
+   * Przykład metody specyficznej dla API
+   */
+  async fetchUserData(userId: string): Promise<AxiosResponse<{ id: string; name: string }>> {
+    return this.axiosInstance.get(`/users/${userId}`);
+  }
+}
