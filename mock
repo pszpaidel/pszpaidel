@@ -1,0 +1,34 @@
+import { expect } from 'chai';
+import sinon from 'sinon';
+import { MojaKlasa, InnaKlasa } from './classes';
+
+describe('MojaKlasa', () => {
+  let MockInnaKlasa: sinon.SinonStubbedInstance<typeof InnaKlasa>;
+  let metodaStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    // Tworzenie stuba dla metody `metoda`
+    metodaStub = sinon.stub().returns('Mockowana metoda');
+
+    // Tworzenie zamockowanej klasy `InnaKlasa`
+    MockInnaKlasa = sinon.createStubInstance(InnaKlasa);
+    MockInnaKlasa.metoda = metodaStub;
+  });
+
+  it('powinna używać mockowanej klasy i metody', () => {
+    // Zastąp konstruktor `InnaKlasa`
+    const mockConstructor = sinon.stub().returns(MockInnaKlasa as unknown as InnaKlasa);
+    const MojaKlasaZMockiem = class extends MojaKlasa {
+      constructor() {
+        super();
+        this.innaInstancja = mockConstructor();
+      }
+    };
+
+    const mojaKlasa = new MojaKlasaZMockiem();
+
+    // Sprawdzenie, czy metoda `metoda` została wywołana
+    expect(mojaKlasa.wykonaj()).to.equal('Mockowana metoda');
+    sinon.assert.calledOnce(metodaStub);
+  });
+});
